@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as faqService from '../services/faqService';
 import type { CreateFaqInput, UpdateFaqInput } from '../services/faqService';
+import { auditContextFromRequest } from '../services/auditService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { paginationMeta, parsePagination } from '../utils/pagination';
 import { created, ok } from '../utils/response';
@@ -18,17 +19,17 @@ export const getFaq = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const createFaq = asyncHandler(async (req: Request, res: Response) => {
-  const faq = await faqService.createFaq(req.productScope, req.body as CreateFaqInput);
+  const faq = await faqService.createFaq(req.productScope, req.body as CreateFaqInput, auditContextFromRequest(req));
   created(res, faq, 'FAQ created');
 });
 
 export const updateFaq = asyncHandler(async (req: Request, res: Response) => {
-  const faq = await faqService.updateFaq(req.productScope, req.params.id, req.body as UpdateFaqInput);
+  const faq = await faqService.updateFaq(req.productScope, req.params.id, req.body as UpdateFaqInput, auditContextFromRequest(req));
   ok(res, faq, 'FAQ updated');
 });
 
 export const deleteFaq = asyncHandler(async (req: Request, res: Response) => {
-  await faqService.deleteFaq(req.productScope, req.params.id);
+  await faqService.deleteFaq(req.productScope, req.params.id, auditContextFromRequest(req));
   ok(res, null, 'FAQ deleted');
 });
 

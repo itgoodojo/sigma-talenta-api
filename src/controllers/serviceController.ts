@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as serviceService from '../services/serviceService';
 import type { CreateServiceInput, UpdateServiceInput } from '../services/serviceService';
+import { auditContextFromRequest } from '../services/auditService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { paginationMeta, parsePagination } from '../utils/pagination';
 import { created, ok } from '../utils/response';
@@ -23,7 +24,7 @@ export const getService = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const createService = asyncHandler(async (req: Request, res: Response) => {
-  const service = await serviceService.createService(req.productScope, req.body as CreateServiceInput);
+  const service = await serviceService.createService(req.productScope, req.body as CreateServiceInput, auditContextFromRequest(req));
   created(res, service, 'Service created');
 });
 
@@ -32,12 +33,13 @@ export const updateService = asyncHandler(async (req: Request, res: Response) =>
     req.productScope,
     req.params.id,
     req.body as UpdateServiceInput,
+    auditContextFromRequest(req),
   );
   ok(res, service, 'Service updated');
 });
 
 export const deleteService = asyncHandler(async (req: Request, res: Response) => {
-  await serviceService.deleteService(req.productScope, req.params.id);
+  await serviceService.deleteService(req.productScope, req.params.id, auditContextFromRequest(req));
   ok(res, null, 'Service deleted');
 });
 

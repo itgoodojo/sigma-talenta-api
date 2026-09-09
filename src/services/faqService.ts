@@ -3,6 +3,7 @@ import Product from '../models/Product';
 import { AppError } from '../middlewares/errorHandler';
 import type { ProductScope } from '../types/express';
 import { assertProductInScope, resolveProductIdForCreate } from '../utils/productScope';
+import { auditActionForStatusChange, recordEntityAudit, type AuditContext } from './auditService';
 
 const PRODUCT_INCLUDE = { model: Product, as: 'product', attributes: ['id', 'code', 'name'] };
 
@@ -51,30 +52,45 @@ export async function getFaqById(scope: ProductScope | undefined, id: string): P
   return faq;
 }
 
-export async function createFaq(scope: ProductScope | undefined, input: CreateFaqInput): Promise<Faq> {
+export async function createFaq(
+  scope: ProductScope | undefined,
+  input: CreateFaqInput,
+  audit?: AuditContext,
+): Promise<Faq> {
   const productId = await resolveProductIdForCreate(scope, input.productId);
-  return Faq.create({
+  const faq = await Faq.create({
     productId,
     question: input.question,
     answer: input.answer,
     sortOrder: input.sortOrder ?? 0,
     status: input.status ?? 'ACTIVE',
   });
+  await recordEntityAudit(audit, 'CREATE', 'Faq', faq.id, faq.productId);
+  return faq;
 }
 
-export async function updateFaq(scope: ProductScope | undefined, id: string, input: UpdateFaqInput): Promise<Faq> {
+export async function updateFaq(
+  scope: ProductScope | undefined,
+  id: string,
+  input: UpdateFaqInput,
+  audit?: AuditContext,
+): Promise<Faq> {
   const faq = await getFaqById(scope, id);
+  const oldStatus = faq.status;
   await faq.update({
     question: input.question ?? faq.question,
     answer: input.answer ?? faq.answer,
     sortOrder: input.sortOrder ?? faq.sortOrder,
     status: input.status ?? faq.status,
   });
+  const action = auditActionForStatusChange(oldStatus, faq.status, 'ACTIVE');
+  await recordEntityAudit(audit, action, 'Faq', faq.id, faq.productId);
   return faq;
 }
 
-export async function deleteFaq(scope: ProductScope | undefined, id: string): Promise<void> {
+export async function deleteFaq(scope: ProductScope | undefined, id: string, audit?: AuditContext): Promise<void> {
   const faq = await getFaqById(scope, id);
+  await recordEntityAudit(audit, 'DELETE', 'Faq', faq.id, faq.productId);
   await faq.destroy();
 }
 

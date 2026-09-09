@@ -6,6 +6,7 @@ import User from '../models/User';
 import { AppError } from '../middlewares/errorHandler';
 import type { ProductScope } from '../types/express';
 import { assertProductInScope } from '../utils/productScope';
+import { auditActionForStatusChange, recordEntityAudit, type AuditContext } from './auditService';
 
 const PRODUCT_INCLUDE = { model: Product, as: 'product', attributes: ['id', 'code', 'name'] };
 const AUTHOR_INCLUDE = { model: User, as: 'author', attributes: ['id', 'name', 'email'] };
@@ -70,10 +71,7 @@ async function resolveProductId(
   return clientProductId;
 }
 
-export async function listArticles(
-  scope: ProductScope | undefined,
-  opts: ArticleListOptions,
-) {
+export async function listArticles(scope: ProductScope | undefined, opts: ArticleListOptions) {
   const where = buildWhere(scope, opts);
   const { rows, count } = await Article.findAndCountAll({
     where,
@@ -99,13 +97,14 @@ export async function createArticle(
   scope: ProductScope | undefined,
   authorId: string | null,
   input: CreateArticleInput,
+  audit?: AuditContext,
 ): Promise<Article> {
   const productId = await resolveProductId(scope, input.productId);
   const status = input.status ?? 'DRAFT';
   const publishedAt = status === 'PUBLISHED' ? (input.publishedAt ?? new Date()) : null;
 
   try {
-    return await Article.create({
+    const article = await Article.create({
       productId,
       authorId,
       title: input.title,
@@ -116,6 +115,8 @@ export async function createArticle(
       status,
       publishedAt,
     });
+    await recordEntityAudit(audit, 'CREATE', 'Article', article.id, article.productId);
+    return article;
   } catch (err) {
     if (err instanceof UniqueConstraintError) throw toConflict();
     throw err;
@@ -126,8 +127,10 @@ export async function updateArticle(
   scope: ProductScope | undefined,
   id: string,
   input: UpdateArticleInput,
+  audit?: AuditContext,
 ): Promise<Article> {
   const article = await getArticleById(scope, id);
+  const oldStatus = article.status;
   const status = input.status ?? article.status;
   const publishedAt =
     status === 'PUBLISHED' ? (input.publishedAt ?? article.publishedAt ?? new Date()) : null;
@@ -147,11 +150,19 @@ export async function updateArticle(
     throw err;
   }
 
+  const action = auditActionForStatusChange(oldStatus, status, 'PUBLISHED');
+  await recordEntityAudit(audit, action, 'Article', article.id, article.productId);
+
   return article;
 }
 
-export async function deleteArticle(scope: ProductScope | undefined, id: string): Promise<void> {
+export async function deleteArticle(
+  scope: ProductScope | undefined,
+  id: string,
+  audit?: AuditContext,
+): Promise<void> {
   const article = await getArticleById(scope, id);
+  await recordEntityAudit(audit, 'DELETE', 'Article', article.id, article.productId);
   await article.destroy();
 }
 
@@ -167,10 +178,7 @@ export async function listPublishedArticles(productId: string, opts: { page: num
   return { rows, count };
 }
 
-export async function getPublishedArticleBySlug(
-  productId: string,
-  slug: string,
-): Promise<Article> {
+export async function getPublishedArticleBySlug(productId: string, slug: string): Promise<Article> {
   const article = await Article.findOne({
     where: { productId, slug, status: 'PUBLISHED' },
     include: [PRODUCT_INCLUDE, AUTHOR_INCLUDE],

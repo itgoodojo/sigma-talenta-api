@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as industryService from '../services/industryService';
 import type { CreateIndustryInput, UpdateIndustryInput } from '../services/industryService';
+import { auditContextFromRequest } from '../services/auditService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { paginationMeta, parsePagination } from '../utils/pagination';
 import { created, ok } from '../utils/response';
@@ -23,7 +24,7 @@ export const getIndustry = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const createIndustry = asyncHandler(async (req: Request, res: Response) => {
-  const industry = await industryService.createIndustry(req.productScope, req.body as CreateIndustryInput);
+  const industry = await industryService.createIndustry(req.productScope, req.body as CreateIndustryInput, auditContextFromRequest(req));
   created(res, industry, 'Industry created');
 });
 
@@ -32,12 +33,13 @@ export const updateIndustry = asyncHandler(async (req: Request, res: Response) =
     req.productScope,
     req.params.id,
     req.body as UpdateIndustryInput,
+    auditContextFromRequest(req),
   );
   ok(res, industry, 'Industry updated');
 });
 
 export const deleteIndustry = asyncHandler(async (req: Request, res: Response) => {
-  await industryService.deleteIndustry(req.productScope, req.params.id);
+  await industryService.deleteIndustry(req.productScope, req.params.id, auditContextFromRequest(req));
   ok(res, null, 'Industry deleted');
 });
 

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as articleService from '../services/articleService';
 import type { CreateArticleInput, UpdateArticleInput } from '../services/articleService';
+import { auditContextFromRequest } from '../services/auditService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { paginationMeta, parsePagination } from '../utils/pagination';
 import { created, ok } from '../utils/response';
@@ -30,6 +31,7 @@ export const createArticle = asyncHandler(async (req: Request, res: Response) =>
     req.productScope,
     req.user?.id ?? null,
     req.body as CreateArticleInput,
+    auditContextFromRequest(req),
   );
   created(res, article, 'Article created');
 });
@@ -39,12 +41,13 @@ export const updateArticle = asyncHandler(async (req: Request, res: Response) =>
     req.productScope,
     req.params.id,
     req.body as UpdateArticleInput,
+    auditContextFromRequest(req),
   );
   ok(res, article, 'Article updated');
 });
 
 export const deleteArticle = asyncHandler(async (req: Request, res: Response) => {
-  await articleService.deleteArticle(req.productScope, req.params.id);
+  await articleService.deleteArticle(req.productScope, req.params.id, auditContextFromRequest(req));
   ok(res, null, 'Article deleted');
 });
 

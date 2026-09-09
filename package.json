@@ -8,6 +8,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "pretest": "npm run db:test:setup",
+    "test": "DB_NAME=sigma_talenta_test NODE_ENV=test vitest run",
+    "test:watch": "DB_NAME=sigma_talenta_test NODE_ENV=test vitest",
+    "db:test:setup": "DB_NAME_TEST=sigma_talenta_test NODE_ENV=test sequelize-cli db:drop || true; DB_NAME_TEST=sigma_talenta_test NODE_ENV=test sequelize-cli db:create; DB_NAME_TEST=sigma_talenta_test NODE_ENV=test sequelize-cli db:migrate; DB_NAME_TEST=sigma_talenta_test NODE_ENV=test sequelize-cli db:seed:all",
     "db:create": "sequelize-cli db:create",
     "db:drop": "sequelize-cli db:drop",
     "db:migrate": "sequelize-cli db:migrate",
@@ -28,6 +32,8 @@
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.5",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -38,8 +44,13 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
+    "@types/supertest": "^7.2.1",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "sequelize-cli": "^6.6.2",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.0"
   }
 }

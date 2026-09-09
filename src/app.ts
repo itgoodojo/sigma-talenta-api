@@ -6,7 +6,10 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFound';
+import { requestLogger } from './middlewares/requestLogger';
 import routes from './routes';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './docs/swagger';
 import path from 'path';
 
 const app = express();
@@ -25,6 +28,8 @@ app.use(express.urlencoded({ extended: true }));
 // Serve locally-stored media during development (S3/R2 in production).
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
+app.use(requestLogger);
+
 // In-memory rate limiting (single-instance). No Redis.
 app.use(
   '/api',
@@ -41,6 +46,12 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api', routes);
+
+// API documentation — disabled in production.
+if (env.nodeEnv !== 'production') {
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);

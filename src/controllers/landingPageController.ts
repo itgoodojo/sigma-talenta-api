@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as landingPageService from '../services/landingPageService';
 import type { CreateLandingPageInput, UpdateLandingPageInput } from '../services/landingPageService';
+import { auditContextFromRequest } from '../services/auditService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { paginationMeta, parsePagination } from '../utils/pagination';
 import { created, ok } from '../utils/response';
@@ -26,6 +27,7 @@ export const createLandingPage = asyncHandler(async (req: Request, res: Response
   const page = await landingPageService.createLandingPage(
     req.productScope,
     req.body as CreateLandingPageInput,
+    auditContextFromRequest(req),
   );
   created(res, page, 'Landing page created');
 });
@@ -35,12 +37,13 @@ export const updateLandingPage = asyncHandler(async (req: Request, res: Response
     req.productScope,
     req.params.id,
     req.body as UpdateLandingPageInput,
+    auditContextFromRequest(req),
   );
   ok(res, page, 'Landing page updated');
 });
 
 export const deleteLandingPage = asyncHandler(async (req: Request, res: Response) => {
-  await landingPageService.deleteLandingPage(req.productScope, req.params.id);
+  await landingPageService.deleteLandingPage(req.productScope, req.params.id, auditContextFromRequest(req));
   ok(res, null, 'Landing page deleted');
 });
 

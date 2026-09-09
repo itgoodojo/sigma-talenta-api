@@ -4,6 +4,7 @@ import Product from '../models/Product';
 import { AppError } from '../middlewares/errorHandler';
 import type { ProductScope } from '../types/express';
 import { assertProductInScope, resolveProductIdForCreate } from '../utils/productScope';
+import { recordEntityAudit, type AuditContext } from './auditService';
 import { storage } from './storage';
 
 const PRODUCT_INCLUDE = { model: Product, as: 'product', attributes: ['id', 'code', 'name'] };
@@ -46,12 +47,13 @@ export async function uploadMedia(
   uploaderId: string | null,
   file: Express.Multer.File,
   clientProductId?: string,
+  audit?: AuditContext,
 ): Promise<Media> {
   const productId = await resolveProductIdForCreate(scope, clientProductId);
   const key = `${productId}/${randomUUID()}-${sanitizeName(file.originalname)}`;
   const url = await storage.upload({ key, body: file.buffer, contentType: file.mimetype });
 
-  return Media.create({
+  const media = await Media.create({
     productId,
     uploaderId,
     fileName: file.originalname,
@@ -60,10 +62,17 @@ export async function uploadMedia(
     size: file.size,
     url,
   });
+  await recordEntityAudit(audit, 'CREATE', 'Media', media.id, media.productId);
+  return media;
 }
 
-export async function deleteMedia(scope: ProductScope | undefined, id: string): Promise<void> {
+export async function deleteMedia(
+  scope: ProductScope | undefined,
+  id: string,
+  audit?: AuditContext,
+): Promise<void> {
   const media = await getMediaById(scope, id);
+  await recordEntityAudit(audit, 'DELETE', 'Media', media.id, media.productId);
   await storage.delete(media.fileKey);
   await media.destroy();
 }

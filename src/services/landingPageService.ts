@@ -5,6 +5,7 @@ import Product from '../models/Product';
 import { AppError } from '../middlewares/errorHandler';
 import type { ProductScope } from '../types/express';
 import { assertProductInScope, resolveProductIdForCreate } from '../utils/productScope';
+import { auditActionForStatusChange, recordEntityAudit, type AuditContext } from './auditService';
 
 const PRODUCT_INCLUDE = { model: Product, as: 'product', attributes: ['id', 'code', 'name'] };
 
@@ -68,13 +69,14 @@ export async function getLandingPageById(scope: ProductScope | undefined, id: st
 export async function createLandingPage(
   scope: ProductScope | undefined,
   input: CreateLandingPageInput,
+  audit?: AuditContext,
 ): Promise<LandingPage> {
   const productId = await resolveProductIdForCreate(scope, input.productId);
   const status = input.status ?? 'DRAFT';
   const publishedAt = status === 'PUBLISHED' ? (input.publishedAt ?? new Date()) : null;
 
   try {
-    return await LandingPage.create({
+    const page = await LandingPage.create({
       productId,
       title: input.title,
       slug: input.slug,
@@ -89,6 +91,8 @@ export async function createLandingPage(
       robotsIndex: input.robotsIndex ?? true,
       publishedAt,
     });
+    await recordEntityAudit(audit, 'CREATE', 'LandingPage', page.id, page.productId);
+    return page;
   } catch (err) {
     if (err instanceof UniqueConstraintError) throw toConflict();
     throw err;
@@ -99,8 +103,10 @@ export async function updateLandingPage(
   scope: ProductScope | undefined,
   id: string,
   input: UpdateLandingPageInput,
+  audit?: AuditContext,
 ): Promise<LandingPage> {
   const page = await getLandingPageById(scope, id);
+  const oldStatus = page.status;
   const status = input.status ?? page.status;
   const publishedAt =
     status === 'PUBLISHED' ? (input.publishedAt ?? page.publishedAt ?? new Date()) : null;
@@ -125,11 +131,19 @@ export async function updateLandingPage(
     throw err;
   }
 
+  const action = auditActionForStatusChange(oldStatus, status, 'PUBLISHED');
+  await recordEntityAudit(audit, action, 'LandingPage', page.id, page.productId);
+
   return page;
 }
 
-export async function deleteLandingPage(scope: ProductScope | undefined, id: string): Promise<void> {
+export async function deleteLandingPage(
+  scope: ProductScope | undefined,
+  id: string,
+  audit?: AuditContext,
+): Promise<void> {
   const page = await getLandingPageById(scope, id);
+  await recordEntityAudit(audit, 'DELETE', 'LandingPage', page.id, page.productId);
   await page.destroy();
 }
 

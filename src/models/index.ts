@@ -6,6 +6,7 @@ import Faq from './Faq';
 import Service from './Service';
 import Industry from './Industry';
 import Media from './Media';
+import AuditLog from './AuditLog';
 
 Product.hasMany(User, { foreignKey: 'productId', as: 'users' });
 User.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
@@ -33,7 +34,7 @@ User.hasMany(Media, { foreignKey: 'uploaderId', as: 'media' });
 Media.belongsTo(User, { foreignKey: 'uploaderId', as: 'uploader' });
 
 export { sequelize } from '../config/database';
-export { Product, User, Article, LandingPage, Faq, Service, Industry, Media };
+export { Product, User, Article, LandingPage, Faq, Service, Industry, Media, AuditLog };
 export type { UserRole } from './User';
 export type { ArticleStatus } from './Article';
 export type { LandingPageStatus } from './LandingPage';

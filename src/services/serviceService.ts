@@ -4,6 +4,7 @@ import Product from '../models/Product';
 import { AppError } from '../middlewares/errorHandler';
 import type { ProductScope } from '../types/express';
 import { assertProductInScope, resolveProductIdForCreate } from '../utils/productScope';
+import { auditActionForStatusChange, recordEntityAudit, type AuditContext } from './auditService';
 
 const PRODUCT_INCLUDE = { model: Product, as: 'product', attributes: ['id', 'code', 'name'] };
 
@@ -60,10 +61,14 @@ export async function getServiceById(scope: ProductScope | undefined, id: string
   return service;
 }
 
-export async function createService(scope: ProductScope | undefined, input: CreateServiceInput): Promise<Service> {
+export async function createService(
+  scope: ProductScope | undefined,
+  input: CreateServiceInput,
+  audit?: AuditContext,
+): Promise<Service> {
   const productId = await resolveProductIdForCreate(scope, input.productId);
   try {
-    return await Service.create({
+    const service = await Service.create({
       productId,
       title: input.title,
       slug: input.slug,
@@ -74,6 +79,8 @@ export async function createService(scope: ProductScope | undefined, input: Crea
       sortOrder: input.sortOrder ?? 0,
       status: input.status ?? 'ACTIVE',
     });
+    await recordEntityAudit(audit, 'CREATE', 'Service', service.id, service.productId);
+    return service;
   } catch (err) {
     if (err instanceof UniqueConstraintError) throw toConflict();
     throw err;
@@ -84,8 +91,10 @@ export async function updateService(
   scope: ProductScope | undefined,
   id: string,
   input: UpdateServiceInput,
+  audit?: AuditContext,
 ): Promise<Service> {
   const service = await getServiceById(scope, id);
+  const oldStatus = service.status;
   try {
     await service.update({
       title: input.title ?? service.title,
@@ -101,11 +110,18 @@ export async function updateService(
     if (err instanceof UniqueConstraintError) throw toConflict();
     throw err;
   }
+  const action = auditActionForStatusChange(oldStatus, service.status, 'ACTIVE');
+  await recordEntityAudit(audit, action, 'Service', service.id, service.productId);
   return service;
 }
 
-export async function deleteService(scope: ProductScope | undefined, id: string): Promise<void> {
+export async function deleteService(
+  scope: ProductScope | undefined,
+  id: string,
+  audit?: AuditContext,
+): Promise<void> {
   const service = await getServiceById(scope, id);
+  await recordEntityAudit(audit, 'DELETE', 'Service', service.id, service.productId);
   await service.destroy();
 }
 

@@ -4,6 +4,7 @@ import Product from '../models/Product';
 import { AppError } from '../middlewares/errorHandler';
 import type { ProductScope } from '../types/express';
 import { assertProductInScope, resolveProductIdForCreate } from '../utils/productScope';
+import { auditActionForStatusChange, recordEntityAudit, type AuditContext } from './auditService';
 
 const PRODUCT_INCLUDE = { model: Product, as: 'product', attributes: ['id', 'code', 'name'] };
 
@@ -61,10 +62,11 @@ export async function getIndustryById(scope: ProductScope | undefined, id: strin
 export async function createIndustry(
   scope: ProductScope | undefined,
   input: CreateIndustryInput,
+  audit?: AuditContext,
 ): Promise<Industry> {
   const productId = await resolveProductIdForCreate(scope, input.productId);
   try {
-    return await Industry.create({
+    const industry = await Industry.create({
       productId,
       name: input.name,
       slug: input.slug,
@@ -73,6 +75,8 @@ export async function createIndustry(
       sortOrder: input.sortOrder ?? 0,
       status: input.status ?? 'ACTIVE',
     });
+    await recordEntityAudit(audit, 'CREATE', 'Industry', industry.id, industry.productId);
+    return industry;
   } catch (err) {
     if (err instanceof UniqueConstraintError) throw toConflict();
     throw err;
@@ -83,8 +87,10 @@ export async function updateIndustry(
   scope: ProductScope | undefined,
   id: string,
   input: UpdateIndustryInput,
+  audit?: AuditContext,
 ): Promise<Industry> {
   const industry = await getIndustryById(scope, id);
+  const oldStatus = industry.status;
   try {
     await industry.update({
       name: input.name ?? industry.name,
@@ -98,11 +104,18 @@ export async function updateIndustry(
     if (err instanceof UniqueConstraintError) throw toConflict();
     throw err;
   }
+  const action = auditActionForStatusChange(oldStatus, industry.status, 'ACTIVE');
+  await recordEntityAudit(audit, action, 'Industry', industry.id, industry.productId);
   return industry;
 }
 
-export async function deleteIndustry(scope: ProductScope | undefined, id: string): Promise<void> {
+export async function deleteIndustry(
+  scope: ProductScope | undefined,
+  id: string,
+  audit?: AuditContext,
+): Promise<void> {
   const industry = await getIndustryById(scope, id);
+  await recordEntityAudit(audit, 'DELETE', 'Industry', industry.id, industry.productId);
   await industry.destroy();
 }
 

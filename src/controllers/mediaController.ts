@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import * as mediaService from '../services/mediaService';
+import { auditContextFromRequest } from '../services/auditService';
 import { AppError } from '../middlewares/errorHandler';
 import { asyncHandler } from '../utils/asyncHandler';
 import { paginationMeta, parsePagination } from '../utils/pagination';
@@ -27,11 +28,12 @@ export const uploadMediaHandler = asyncHandler(async (req: Request, res: Respons
     req.user?.id ?? null,
     req.file,
     productId,
+    auditContextFromRequest(req),
   );
   created(res, media, 'Media uploaded');
 });
 
 export const deleteMediaHandler = asyncHandler(async (req: Request, res: Response) => {
-  await mediaService.deleteMedia(req.productScope, req.params.id);
+  await mediaService.deleteMedia(req.productScope, req.params.id, auditContextFromRequest(req));
   ok(res, null, 'Media deleted');
 });

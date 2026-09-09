@@ -19,5 +19,5 @@ npm-debug.log*
 # local dev uploads
 uploads/
 
-# docs
-docs
+# top-level plan/spec docs only (src/docs/swagger.ts stays tracked)
+/docs
