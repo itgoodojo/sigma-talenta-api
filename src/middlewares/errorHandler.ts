@@ -1,4 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
+import {
+  DatabaseError,
+  ForeignKeyConstraintError,
+  UniqueConstraintError,
+  ValidationError as SequelizeValidationError,
+} from 'sequelize';
 import { ZodError } from 'zod';
 
 export class AppError extends Error {
@@ -37,7 +43,50 @@ export function errorHandler(
     return;
   }
 
-  // Do not leak stack traces or raw Sequelize errors in production.
+  if (err instanceof UniqueConstraintError) {
+    res.status(409).json({
+      success: false,
+      error: { code: 'CONFLICT', message: 'Resource already exists', details: {} },
+    });
+    return;
+  }
+
+  if (err instanceof ForeignKeyConstraintError) {
+    res.status(409).json({
+      success: false,
+      error: {
+        code: 'CONFLICT',
+        message: 'Related resource does not exist or is still in use',
+        details: {},
+      },
+    });
+    return;
+  }
+
+  if (err instanceof SequelizeValidationError) {
+    res.status(422).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+        details: err.errors.map((e) => e.message),
+      },
+    });
+    return;
+  }
+
+  if (err instanceof DatabaseError) {
+    const pgCode = (err.parent as { code?: string } | undefined)?.code;
+    if (pgCode === '22P02') {
+      res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PARAMETER', message: 'Invalid parameter value', details: {} },
+      });
+      return;
+    }
+  }
+
+  // Do not leak stack traces or raw database errors in production.
   console.error(err);
   res.status(500).json({
     success: false,

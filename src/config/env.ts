@@ -23,5 +23,6 @@ export const env = {
     secretKey: process.env.STORAGE_SECRET_KEY ?? '',
     bucket: process.env.STORAGE_BUCKET ?? '',
     region: process.env.STORAGE_REGION ?? '',
+    publicUrl: process.env.STORAGE_PUBLIC_URL ?? '',
   },
 };
