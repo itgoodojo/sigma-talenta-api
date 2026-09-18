@@ -8,7 +8,10 @@ export interface AuthenticatedUser {
 }
 
 export type ProductScope =
-  | { type: 'all' }
+  // `defaultProductId` is the X-Product header resolved for a SUPER_ADMIN. It is
+  // the create target when the client sends no explicit productId; reads stay
+  // cross-product.
+  | { type: 'all'; defaultProductId?: string }
   | { type: 'single'; productId: string };
 
 export interface ProductContext {

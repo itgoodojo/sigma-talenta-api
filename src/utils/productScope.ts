@@ -18,18 +18,20 @@ export function assertProductInScope(scope: ProductScope | undefined, productId:
 }
 
 // For create: PRODUCT_ADMIN is forced to their own product (client value ignored).
-// SUPER_ADMIN must supply a valid productId.
+// SUPER_ADMIN uses the explicit productId, falling back to the X-Product product
+// that requireProductAccess resolved onto the scope.
 export async function resolveProductIdForCreate(
   scope: ProductScope | undefined,
   clientProductId?: string,
 ): Promise<string> {
   if (scope && scope.type === 'single') return scope.productId;
-  if (!clientProductId) {
+  const productId = clientProductId ?? (scope?.type === 'all' ? scope.defaultProductId : undefined);
+  if (!productId) {
     throw new AppError(400, 'VALIDATION_ERROR', 'productId is required');
   }
-  const product = await Product.findByPk(clientProductId);
+  const product = await Product.findByPk(productId);
   if (!product) {
     throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
   }
-  return clientProductId;
+  return productId;
 }
