@@ -26,3 +26,13 @@ export const env = {
     publicUrl: process.env.STORAGE_PUBLIC_URL ?? '',
   },
 };
+
+// Fail fast at boot rather than issuing tokens signed with an empty secret.
+if (env.nodeEnv === 'production') {
+  const missing: string[] = [];
+  if (!env.jwtSecret) missing.push('JWT_SECRET');
+  if (!env.db.url) missing.push('DATABASE_URL');
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}

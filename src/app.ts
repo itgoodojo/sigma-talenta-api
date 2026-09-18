@@ -14,6 +14,10 @@ import path from 'path';
 
 const app = express();
 
+// Dokploy fronts the container with Traefik; trust one hop so req.ip and
+// express-rate-limit see the real client address instead of the proxy's.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 // In production CORS_ORIGINS is set by Dokploy; reflecting in dev keeps local dev frictionless.
 app.use(

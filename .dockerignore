@@ -1,0 +1,15 @@
+node_modules
+dist
+uploads
+tests
+docs
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.log
+.DS_Store
+docker-compose.yml
+vitest.config.mts

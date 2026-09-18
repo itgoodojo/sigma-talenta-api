@@ -8,6 +8,9 @@ const base = {
   port: Number(process.env.DB_PORT),
   dialect: 'postgres',
   logging: false,
+  // Record applied seeders in a table so db:seed:all is safe to re-run on every deploy.
+  seederStorage: 'sequelize',
+  seederStorageTableName: 'SequelizeSeeds',
 };
 
 module.exports = {
@@ -20,6 +23,8 @@ module.exports = {
     use_env_variable: 'DATABASE_URL',
     dialect: 'postgres',
     logging: false,
+    seederStorage: 'sequelize',
+    seederStorageTableName: 'SequelizeSeeds',
     dialectOptions:
       process.env.DB_SSL === 'true'
         ? { ssl: { require: true, rejectUnauthorized: false } }

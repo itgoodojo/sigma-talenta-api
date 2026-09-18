@@ -19,10 +19,17 @@ module.exports = {
         created_at: now,
         updated_at: now,
       })),
+      // Safe to re-run: existing products keep whatever the CMS has since edited.
+      { ignoreDuplicates: true },
     );
   },
 
-  async down(queryInterface) {
-    await queryInterface.bulkDelete('products', null, {});
+  async down(queryInterface, Sequelize) {
+    // Only the seeded product codes — leave anything added later alone.
+    await queryInterface.bulkDelete(
+      'products',
+      { code: { [Sequelize.Op.in]: PRODUCTS.map((p) => p.code) } },
+      {},
+    );
   },
 };
